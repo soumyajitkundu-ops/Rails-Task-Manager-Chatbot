@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 850 500">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b" />
+    </marker>
+    <marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#0ea5e9" />
+    </marker>
+    <style>
+      .box { fill: #f8fafc; stroke: #cbd5e1; stroke-width: 2px; rx: 8px; }
+      .box-blue { fill: #f0f9ff; stroke: #38bdf8; stroke-width: 2px; rx: 8px; }
+      .box-red { fill: #fef2f2; stroke: #f87171; stroke-width: 2px; rx: 8px; }
+      .text-title { font-family: sans-serif; font-weight: bold; font-size: 14px; fill: #0f172a; }
+      .text-sub { font-family: sans-serif; font-size: 12px; fill: #475569; }
+      .line { stroke: #64748b; stroke-width: 2px; fill: none; marker-end: url(#arrow); }
+      .line-blue { stroke: #0ea5e9; stroke-width: 2px; fill: none; marker-end: url(#arrow-blue); stroke-dasharray: 4; }
+      .label { font-family: monospace; font-size: 11px; fill: #64748b; background: white; }
+    </style>
+  </defs>
+
+  <!-- Client / Browser -->
+  <rect x="20" y="200" width="120" height="80" class="box" />
+  <text x="80" y="235" class="text-title" text-anchor="middle">Client Browser</text>
+  <text x="80" y="255" class="text-sub" text-anchor="middle">Signed Cookie</text>
+
+  <!-- SessionsController (Login / Logout) -->
+  <rect x="250" y="80" width="180" height="100" class="box-blue" />
+  <text x="340" y="110" class="text-title" text-anchor="middle">SessionsController</text>
+  <text x="340" y="130" class="text-sub" text-anchor="middle">register | login | logout</text>
+  <text x="340" y="150" class="text-sub" text-anchor="middle">set_jwt_cookie()</text>
+
+  <!-- ApplicationController (Auth) -->
+  <rect x="250" y="300" width="180" height="100" class="box-blue" />
+  <text x="340" y="330" class="text-title" text-anchor="middle">ApplicationController</text>
+  <text x="340" y="350" class="text-sub" text-anchor="middle">authenticate_user!</text>
+  <text x="340" y="370" class="text-sub" text-anchor="middle">decoded_token()</text>
+
+  <!-- JsonWebToken -->
+  <rect x="550" y="80" width="180" height="90" class="box" />
+  <text x="640" y="110" class="text-title" text-anchor="middle">JsonWebToken</text>
+  <text x="640" y="130" class="text-sub" text-anchor="middle">encode(payload)</text>
+  <text x="640" y="150" class="text-sub" text-anchor="middle">decode(token)</text>
+
+  <!-- User DB -->
+  <rect x="550" y="200" width="180" height="60" class="box" />
+  <text x="640" y="235" class="text-title" text-anchor="middle">User Database</text>
+
+  <!-- TokenBlacklist -->
+  <rect x="550" y="310" width="180" height="110" class="box-red" />
+  <text x="640" y="340" class="text-title" text-anchor="middle">TokenBlacklist</text>
+  <text x="640" y="360" class="text-sub" text-anchor="middle">Concurrent::Map STORE</text>
+  <text x="640" y="380" class="text-sub" text-anchor="middle">revoke(jti, exp)</text>
+  <text x="640" y="400" class="text-sub" text-anchor="middle">revoked?(jti)</text>
+
+  <!-- Connections -->
+  <!-- Login Flow -->
+  <path d="M 140 220 L 250 140" class="line" />
+  <text x="180" y="170" class="label">POST /login</text>
+  <path d="M 430 110 L 550 110" class="line" />
+  <text x="490" y="100" class="label">encode</text>
+  <path d="M 430 160 L 550 220" class="line" />
+  <text x="490" y="200" class="label">find_by</text>
+
+  <!-- Auth Flow -->
+  <path d="M 140 260 L 250 330" class="line" />
+  <text x="170" y="315" class="label">Requests w/ Cookie</text>
+  
+  <path d="M 430 330 L 520 330 L 520 150 L 550 150" class="line" />
+  <text x="450" y="260" class="label">decode</text>
+  
+  <path d="M 430 360 L 550 360" class="line" />
+  <text x="470" y="355" class="label">revoked?</text>
+
+  <!-- Logout Flow -->
+  <path d="M 370 180 L 480 270 L 590 310" class="line-blue" />
+  <text x="410" y="235" class="label">logout -> revoke()</text>
+
+</svg>
