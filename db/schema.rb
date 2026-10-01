@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_30_060835) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_01_000100) do
   create_table "chat_memory_snapshots", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.json "learned_facts", null: false
@@ -30,6 +30,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_30_060835) do
     t.text "user_message", null: false
     t.index ["user_id", "created_at"], name: "index_chat_messages_on_user_id_and_created_at"
     t.index ["user_id"], name: "index_chat_messages_on_user_id"
+  end
+
+  create_table "group_chat_messages", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "owner_id"
+    t.text "text", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_group_chat_messages_on_created_at"
+    t.index ["owner_id"], name: "index_group_chat_messages_on_owner_id"
   end
 
   create_table "todos", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
@@ -54,5 +63,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_30_060835) do
 
   add_foreign_key "chat_memory_snapshots", "users"
   add_foreign_key "chat_messages", "users"
+  add_foreign_key "group_chat_messages", "users", column: "owner_id"
   add_foreign_key "todos", "users"
 end

@@ -1,11 +1,10 @@
-# dbstore — Todo app with AI chat, memory, and web-grounded answers
+# dbstore — Todos, private AI chat, and shared group chat
 
-A Rails API with JWT-authenticated todos, plus an AI chat assistant that:
+A Rails API and React frontend with JWT-authenticated todos and two chat modes:
 
-- keeps a rolling conversation memory (in-process, with a MySQL-backed durable snapshot)
-- knows the user's own todos as live context
-- falls back to a web search (Google SERP + Google AI Mode, via Scrape.do) when it doesn't know an answer, without ever leaking personal data into the search query
-- logs the full chat transcript to the database for the frontend to render
+- **AI Assistant** keeps per-user rolling conversation memory, can use that user's todos as context, and searches public sources when needed.
+- **Group Chat** is one shared, database-backed transcript visible to every authenticated user. It loads five messages at a time and broadcasts new messages with Action Cable.
+- Mention `@AI` in Group Chat to get a reply based on the five preceding group messages. It can search for public information, but does not receive private AI memory, todos, or account data.
 
 ## Stack
 
@@ -13,6 +12,8 @@ A Rails API with JWT-authenticated todos, plus an AI chat assistant that:
 - JWT auth in a signed, httponly cookie
 - [Groq](https://groq.com) (`openai/gpt-oss-120b`) for the chat model
 - [Scrape.do](https://scrape.do) for web search (Google SERP + Google AI Mode)
+- Action Cable for shared group-chat broadcasts
+- React 19, Vite 8, and Tailwind CSS 4 frontend
 - In-process `Concurrent::Map` for live chat sessions, with debounced DB snapshotting
 
 ## Setup
@@ -21,8 +22,23 @@ A Rails API with JWT-authenticated todos, plus an AI chat assistant that:
 bundle install
 bin/rails credentials:edit
 bin/rails db:create db:migrate
+```
+
+Run the Rails API and Action Cable server from the repository root:
+
+```bash
 bin/rails s
 ```
+
+In a second terminal, install and run the frontend:
+
+```bash
+cd frontend/todo-chatbot
+npm install
+npm run dev
+```
+
+Vite serves the UI at `http://localhost:5173`; Rails serves the API and Cable endpoint at `http://localhost:3000` and `ws://localhost:3000/cable`.
 
 ### Credentials
 
@@ -37,6 +53,8 @@ groq:
 scrape_do:
   token: <your Scrape.do token>
 ```
+
+The Scrape.do token is needed for public web search. Without it, search-dependent answers use the configured no-results response.
 
 ### Cache
 
@@ -53,21 +71,21 @@ Client
   │
   ├─ Auth (SessionsController)        — register, login, logout, JWT cookie
   ├─ Todos (TodosController)          — create/update tasks; refreshes chat memory's core data
-  └─ AI chat (AiController)           — chat, chat history, clear memory
-        │
-        ▼
-  AiChatService                       — orchestrates one chat turn
-        │
-        ├─ ChatMemory                 — working conversation state (map + DB snapshot)
-        ├─ ChatMemoryJobs             — debounced snapshot + 2-minute idle eviction (in-process timers)
-        ├─ GroqClient                 — talks to the Groq chat completions API
-        └─ SearchClient               — talks to Scrape.do (Google SERP + Google AI Mode)
-              │
-              ▼
-        MySQL (users, todos, chat_memory_snapshots, chat_messages)
+  ├─ Private AI chat (AiController)
+  │     └─ AiChatService              — private chat with rolling memory
+  │           ├─ ChatMemory           — working state (map + DB snapshot)
+  │           ├─ ChatMemoryJobs       — snapshot + idle-eviction timers
+  │           ├─ GroqClient           — Groq chat completions API
+  │           └─ SearchClient         — public Google SERP + AI Mode search
+  └─ Shared Group Chat
+        ├─ GroupChatMessagesController — shared history and posting
+        ├─ GroupChatChannel            — live Action Cable broadcasts
+        └─ GroupChatAiService          — @AI replies; public search when needed
+
+MySQL (users, todos, chat_memory_snapshots, chat_messages, group_chat_messages)
 ```
 
-See the two diagrams shared in chat for the visual version of this (component architecture, and the step-by-step `/ai/chat` request flow).
+The private AI transcript (`chat_messages`) and shared group transcript (`group_chat_messages`) are separate. Group-chat AI does not load `ChatMemory` or user todos.
 
 ## API
 
@@ -82,6 +100,11 @@ See the two diagrams shared in chat for the visual version of this (component ar
 | POST | `/ai/chat` | ✓ | Send a chat message, get an answer |
 | GET | `/ai/chats` | ✓ | Fetch this user's chat transcript, oldest first (`?user_id=` for admins) |
 | DELETE | `/ai/clear_memory` | ✓ | Wipe this user's working chat memory (not the transcript) |
+| GET | `/group_chat/messages` | ✓ | Fetch the newest five shared messages; pass `?before_id=<id>` for the previous page |
+| POST | `/group_chat/messages` | ✓ | Add `{ "text": "..." }` to the shared transcript; `@AI` triggers an AI reply |
+| WebSocket | `/cable` | ✓ | Action Cable endpoint for live group messages (`GroupChatChannel`) |
+
+Group messages are returned as `{ text, id, ownerid, ownername }`. IDs are generated by the database. AI messages have `ownerid: -1` and `ownername: "AI"`; their database `owner_id` is null, so no synthetic user account is needed.
 
 ## How a chat message is answered
 
@@ -109,6 +132,26 @@ conversation summary current. Call 2 only needs to turn search evidence into wor
 skips the user's personal data, memory, and history entirely — smaller prompt, smaller
 completion, less exposure of personal data to search-derived content.
 
+## Shared Group Chat
+
+Group history is common to all authenticated users. The initial request returns the newest
+five messages in chronological display order. `before_id` retrieves the next five older
+messages. Each saved message is broadcast to subscribers through `GroupChatChannel`.
+
+When a message mentions `@AI` (case-insensitive), `GroupChatAiService` sends the five prior
+group messages, labeled with sender names, plus the new message to Groq. The model answers
+directly when it can, or requests a short public search query (at most 12 words). Search uses
+the same Scrape.do-backed SERP and Google AI Mode client as the private assistant. The final
+answer is generated from public search evidence only; task data, private account data, and
+the private assistant's memory are never included. Search results are treated as untrusted
+content, and the final answer does not include URLs or citations.
+
+Run the focused Rails tests with:
+
+```bash
+bin/rails test test/controllers/group_chat_messages_controller_test.rb
+```
+
 ## Known limitations
 
 - **Single-process memory.** The in-process map isn't shared across multiple Puma workers or
@@ -117,10 +160,11 @@ completion, less exposure of personal data to search-derived content.
   truth.
 - **"Answer box" queries** (live weather, currency conversion, stock prices, in-progress
   scores) aren't reliably answered by web search, since those are computed and rendered by
-  Google directly rather than crawled and indexed text. They'd need a dedicated API per
-  category (e.g. a weather API) rather than falling through to search.
+  Google directly rather than crawled and indexed text. This applies to both chat modes;
+  reliable real-time answers need a dedicated API per category (for example, a weather API).
 - **Groq's free/on-demand tier** has an 8,000 tokens-per-minute cap; heavy use of the search
-  path can hit it. `AiChatService` logs Groq error responses distinctly from parse failures,
-  but does not currently retry automatically.
+  path can hit it. `AiChatService` and `GroupChatAiService` log Groq errors, but do not
+  currently retry automatically.
 - **Scrape.do costs credits per search** (10 for SERP, 10 for AI Mode). Results are cached for
-  an hour to reduce repeat cost, but there's no budget/quota guard beyond that.
+  an hour to reduce repeat cost, but there's no budget/quota guard beyond that. Both chat
+  modes use this client for searches.

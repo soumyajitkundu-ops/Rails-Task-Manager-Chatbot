@@ -46,7 +46,7 @@ export default function Dashboard({ onLogout }) {
             <TodoList todos={userData.todos} refreshData={fetchDashboardData} />
           </div>
           <div>
-            <Chatbot />
+            <Chatbot currentUserId={userData.id} />
           </div>
         </div>
       </div>
