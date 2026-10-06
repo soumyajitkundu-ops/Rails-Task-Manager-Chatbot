@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createConsumer } from '@rails/actioncable';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { apiCall } from '../api';
 
 const mergeGroupMessages = (current, incoming) => {
@@ -264,8 +266,27 @@ export default function Chatbot({ currentUserId }) {
                 </div>
                 {msg.assistant_message && (
                   <div className="flex justify-start">
-                    <div className="px-4 py-2 text-gray-800 bg-gray-200 rounded-lg max-w-[80%]">
-                      {msg.assistant_message}
+                    <div className="px-4 py-2 text-gray-800 bg-gray-200 rounded-lg max-w-[90%] wrap-break-word overflow-x-auto text-sm">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          ul: ({node, ...props}) => <ul className="list-disc pl-5 my-2" {...props} />,
+                          ol: ({node, ...props}) => <ol className="list-decimal pl-5 my-2" {...props} />,
+                          li: ({node, ...props}) => <li className="mb-1" {...props} />,
+                          p: ({node, ...props}) => <p className="mb-2 last:mb-0" {...props} />,
+                          strong: ({node, ...props}) => <strong className="font-semibold" {...props} />,
+                          code: ({node, ...props}) => <code className="bg-gray-100 text-pink-600 px-1 py-0.5 rounded text-xs" {...props} />,
+                          pre: ({node, ...props}) => <pre className="bg-gray-100 p-2 rounded my-2 overflow-x-auto text-xs" {...props} />,
+                          table: ({node, ...props}) => <table className="min-w-full divide-y divide-gray-200 my-2 border border-gray-200" {...props} />,
+                          thead: ({node, ...props}) => <thead className="bg-gray-50" {...props} />,
+                          tbody: ({node, ...props}) => <tbody className="divide-y divide-gray-200 bg-white" {...props} />,
+                          tr: ({node, ...props}) => <tr className="hover:bg-gray-50" {...props} />,
+                          th: ({node, ...props}) => <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b" {...props} />,
+                          td: ({node, ...props}) => <td className="px-3 py-2 text-sm text-gray-700 whitespace-nowrap" {...props} />
+                        }}
+                      >
+                        {msg.assistant_message}
+                      </ReactMarkdown>
                     </div>
                   </div>
                 )}

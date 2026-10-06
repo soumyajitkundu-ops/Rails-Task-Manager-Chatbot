@@ -36,4 +36,30 @@ class GroqClient
 
     JSON.parse(response.body)
   end
+
+  def tool_chat(messages_array, tools)
+    uri = URI(BASE_URL)
+    request = Net::HTTP::Post.new(uri)
+
+    request["Content-Type"] = "application/json"
+    request["Authorization"] = "Bearer #{@api_key}"
+
+    request.body = {
+      model: "openai/gpt-oss-120b",
+      messages: messages_array,
+      tools: tools,
+      tool_choice: "auto"
+    }.to_json
+
+    response = Net::HTTP.start(
+      uri.hostname, uri.port,
+      use_ssl: true,
+      open_timeout: OPEN_TIMEOUT,
+      read_timeout: READ_TIMEOUT
+    ) do |http|
+      http.request(request)
+    end
+
+    JSON.parse(response.body)
+  end
 end

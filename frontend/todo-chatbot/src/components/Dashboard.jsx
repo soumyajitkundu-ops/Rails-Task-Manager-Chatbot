@@ -1,17 +1,20 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { apiCall } from '../api';
 import TodoList from './TodoList';
 import Chatbot from './Chatbot';
+import ReadersWriters from './ReadersWriters';
+import McpChatbot from './McpChatbot';
 
 export default function Dashboard({ onLogout }) {
   const [userData, setUserData] = useState(null);
+  const [activeSection, setActiveSection] = useState('workspace');
 
   const fetchDashboardData = async () => {
     try {
       // Returns user info along with embedded todos[cite: 4]
       const res = await apiCall('/me');
       setUserData(res.user);
-    } catch (err) {
+    } catch {
       console.error("Failed to load dashboard");
     }
   };
@@ -41,14 +44,47 @@ export default function Dashboard({ onLogout }) {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-          <div>
-            <TodoList todos={userData.todos} refreshData={fetchDashboardData} />
+        <nav className="mb-6 flex gap-2 border-b border-gray-300" aria-label="Dashboard sections">
+          <button
+            type="button"
+            aria-pressed={activeSection === 'workspace'}
+            onClick={() => setActiveSection('workspace')}
+            className={`border-b-2 px-4 py-3 text-sm font-semibold ${activeSection === 'workspace' ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-gray-600 hover:text-gray-900'}`}
+          >
+            Workspace
+          </button>
+          <button
+            type="button"
+            aria-pressed={activeSection === 'readers-writers'}
+            onClick={() => setActiveSection('readers-writers')}
+            className={`border-b-2 px-4 py-3 text-sm font-semibold ${activeSection === 'readers-writers' ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-gray-600 hover:text-gray-900'}`}
+          >
+            Readers &amp; Writers
+          </button>
+          <button
+            type="button"
+            aria-pressed={activeSection === 'mcp'}
+            onClick={() => setActiveSection('mcp')}
+            className={`border-b-2 px-4 py-3 text-sm font-semibold ${activeSection === 'mcp' ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-gray-600 hover:text-gray-900'}`}
+          >
+            MCP Chatbot
+          </button>
+        </nav>
+
+        {activeSection === 'workspace' && (
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+            <div>
+              <TodoList todos={userData.todos} refreshData={fetchDashboardData} />
+            </div>
+            <div>
+              <Chatbot currentUserId={userData.id} />
+            </div>
           </div>
-          <div>
-            <Chatbot currentUserId={userData.id} />
-          </div>
-        </div>
+        )}
+        
+        {activeSection === 'readers-writers' && <ReadersWriters currentUserId={userData.id} />}
+        
+        {activeSection === 'mcp' && <McpChatbot currentUserId={userData.id} />}
       </div>
     </div>
   );

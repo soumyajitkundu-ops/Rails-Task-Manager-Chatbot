@@ -6,6 +6,6 @@ one:
   password_digest: MyString
 
 two:
-  name: MyString
+  name: MyString2
   age: 1
   password_digest: MyString
