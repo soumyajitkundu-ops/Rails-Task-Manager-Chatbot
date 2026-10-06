@@ -51,7 +51,7 @@ end
 
 gem "bcrypt", "~> 3.1"
 
-gem "json", "= 2.21.2"
+gem "json", "3.0.2"
 
 gem "jwt", "~> 3.3"
 gem "mcp"
